@@ -1184,6 +1184,7 @@ module ControlPanel = {
     ~editorCode: React.ref<string>,
   ) => {
     let router = Next.Router.useRouter()
+    let (evalState, dispatchEval) = Eval.useEval()
     let children = switch state {
     | Init => React.string("Initializing...")
     | SwitchingCompiler(_, _, _) => React.string("Switching Compiler...")
@@ -1192,6 +1193,23 @@ module ControlPanel = {
       let onFormatClick = evt => {
         ReactEvent.Mouse.preventDefault(evt)
         dispatch(Format(editorCode.current))
+      }
+
+      let onRunClick = evt => {
+        ReactEvent.Mouse.preventDefault(evt)
+
+        let getSuccessCompilationResult = result =>
+          switch result {
+          | RescriptCompilerApi.CompilationResult.Success(r) => Some(r)
+          | _ => None
+          }
+
+        switch ready.result {
+        | FinalResult.Nothing => Js.log("nothing")
+        | FinalResult.Comp(x) =>
+          getSuccessCompilationResult(x)->Belt.Option.map(r => dispatchEval(r.js_code))->ignore
+        | FinalResult.Conv(_) => Js.log("conv")
+        }
       }
 
       let createShareLink = () => {
@@ -1216,6 +1234,7 @@ module ControlPanel = {
         <div className="mr-2">
           <Button onClick=onFormatClick> {React.string("Format")} </Button>
         </div>
+        <div className="mr-2"> <Button onClick=onRunClick> {React.string("Run")} </Button> </div>
         <ShareButton actionIndicatorKey createShareLink />
       </>
     | _ => React.null
